@@ -181,6 +181,23 @@ sudo docker run -it --gpus '"device=0,1,2,3"' --ipc=host --shm-size 32g \
 
 ### (Inside the container)
 
+# 1) Install deps
+```bash
+python -m pip install -U pip wheel setuptools
+pip install --no-cache-dir "transformers<4.46" "datasets<3" "accelerate>=0.30,<0.33" sentencepiece
+```
+# 2) Quick sanity
+```bash
+python - <<'PY'
+import torch, transformers, datasets, accelerate, sentencepiece
+print("torch:", torch.__version__)
+print("transformers:", transformers.__version__)
+print("datasets:", datasets.__version__)
+print("accelerate:", accelerate.__version__)
+print("sentencepiece OK")
+PY
+```
+# 3) Env (if you opened a fresh shell, set again)
 ```bash
 export HF_HOME=/work/hf_cache
 export TOKENIZERS_PARALLELISM=false
@@ -191,18 +208,10 @@ export NCCL_IB_DISABLE=1
 export CUDA_VISIBLE_DEVICES=0,1,2,3
 export MASTER_ADDR=127.0.0.1
 export MASTER_PORT=29500
-
-# Optional: seed AUTO hints (CPU snapshot + thread persist)
-python - <<'PY'
-import json, pathlib
-cfg = {"avg_iter_dur": 0.07, "chk_freq": 120, "self._chk_fn": "cpu", "self._use_thread": True}
-for name in [".cache_bloom560m_1", ".cache_bloom560m_4"]:
-    pathlib.Path("/work/LLM-Checkpoints/"+name).write_text(json.dumps(cfg))
-print("seeded")
-PY
-
 mkdir -p /work/chk_bloom_multi
-
+```
+# 4) 4-GPU AUTO run
+```bash
 torchrun --standalone --nnodes=1 --nproc_per_node=4 \
   /work/LLM-Checkpoints/models/nlp/bloom_cf.py \
   --model bigscience/bloom-560m \
@@ -216,44 +225,4 @@ torchrun --standalone --nnodes=1 --nproc_per_node=4 \
   --chk-prefix /work/chk_bloom_multi \
   --manual-freq 0 \
   --arch-name bloom560m | tee -a /work/chk_bloom_multi/run.log
-```
-
----
-
-## Troubleshooting
-
-- **`ModuleNotFoundError: transformers`**  
-  You’re in a fresh container. Re-run the **Python deps** block.
-
-- **`/work/python: [Errno 2]`**  
-  `torchrun` needs a *file path*, not `python -`. Use a script file or point to `bloom_cf.py`.
-
-- **`CUDA error: invalid device ordinal`**  
-  Ensure `CUDA_VISIBLE_DEVICES` has at least as many IDs as `--nproc_per_node`.  
-  Example: for 4 ranks, `export CUDA_VISIBLE_DEVICES=0,1,2,3`.
-
-- **`Default process group has not been initialized` during persist**  
-  Keep `export CF_USE_THREAD=1` (already set above) so the async checkpoint writer uses a thread path.
-
-- **Slow disk or large checkpoints**  
-  Use MANUAL mode first (`--manual-freq 200`) to verify stability, then AUTO (`--manual-freq 0`).
-
----
-
-## Add README to GitHub
-
-**Option 1 — Web UI**
-1. Download the `README.md` from this chat (link below).
-2. On GitHub, open your repo → **Add file** → **Upload files** → drag `README.md` → **Commit**.
-
-**Option 2 — Git in the container**
-```bash
-cd /work/LLM-Checkpoints   # or your target repo
-mv /work/README.md ./README.md  # if you saved it in the mount
-git checkout -b add-readme
-git add README.md
-git commit -m "Add README with single/multi-GPU runs"
-git push origin add-readme
-```
-Then open a Pull Request on GitHub.
-
+  ```
