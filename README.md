@@ -32,6 +32,19 @@ sudo docker run -it --gpus all --ipc=host --shm-size 32g \
   pytorch/pytorch:2.3.1-cuda11.8-cudnn8-runtime bash
 ```
 
+
+if you have it,
+
+```bash
+# See if it's running or stopped
+sudo docker ps -a --filter "name=^/cf-bloom$" --format "table {{.Names}}\t{{.Status}}"
+
+# If it's not running, start it
+sudo docker start cf-bloom
+
+# Open a shell inside it
+sudo docker exec -it cf-bloom bash
+```
 ### (Inside the container)
 
 ```bash
