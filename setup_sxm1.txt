@@ -1,0 +1,198 @@
+# 0) Pull the CUDA 11.8 PyTorch runtime (already pulled is fine)
+sudo docker pull pytorch/pytorch:2.3.1-cuda11.8-cudnn8-runtime
+
+# 1) Start a container with your workspace mounted at /work
+sudo docker run -it --gpus all --ipc=host --shm-size 32g \
+  -v /home/yi/checkfreq_env:/work \
+  --workdir /work \
+  --name cf-bloom \
+  pytorch/pytorch:2.3.1-cuda11.8-cudnn8-runtime bash
+
+
+  # 2) Basic tools + quick GPU sanity
+apt-get update && apt-get install -y git
+nvidia-smi
+python - <<'PY'
+import torch
+print("cuda.is_available:", torch.cuda.is_available(), "device_count:", torch.cuda.device_count())
+PY
+
+# 3) Clone the repositories
+cd /work
+git clone https://github.com/msr-fiddle/CheckFreq.git
+git clone --branch checkfreq_bloom --single-branch https://github.com/OlgaKogiou/LLM-Checkpoints.git
+
+# 4) (Usually already present in this image, but safe to ensure)
+pip install -U pip
+pip install "transformers<4.46" datasets accelerate
+
+# 5) Make sure the BLOOM cache dir exists
+mkdir -p /work/hf_cache
+
+# 6) If you don’t already have a training text, confirm (you already do: /work/wt2_small.txt)
+ls -lh /work/wt2_small.txt || echo "Put your text at /work/wt2_small.txt"
+
+# 7) Env: prefer the DALI-free CheckFreq modules from LLM-Checkpoints
+export HF_HOME=/work/hf_cache
+export TOKENIZERS_PARALLELISM=false
+export PYTHONPATH=/work/LLM-Checkpoints:/work/CheckFreq/src:$PYTHONPATH
+
+# (Optional) verify cf_iterator is coming from LLM-Checkpoints (no DALI required)
+python - <<'PY'
+import cf_iterator, inspect
+print("cf_iterator:", inspect.getsourcefile(cf_iterator))
+PY
+
+# 8) IMPORTANT: run single-GPU, no torchrun/DDP (keeps your code untouched)
+unset RANK WORLD_SIZE LOCAL_RANK MASTER_ADDR MASTER_PORT
+export CUDA_VISIBLE_DEVICES=0
+
+# 9) Output directory
+mkdir -p /work/chk_bloom_auto_small
+
+# 10) Run BLOOM-560m + CheckFreq (AUTO mode because --manual-freq 0)
+python -u /work/LLM-Checkpoints/models/nlp/bloom_cf.py \
+  --model bigscience/bloom-560m \
+  --train-file /work/wt2_small.txt \
+  --seq-len 128 \
+  --batch-size 2 \
+  --grad-accum-steps 8 \
+  --epochs 1 \
+  --workers 2 \
+  --lr 2e-5 \
+  --chk-prefix /work/chk_bloom_auto_small \
+  --manual-freq 0 \
+  --arch-name bloom560m | tee -a /work/chk_bloom_auto_small/run.log
+
+
+
+  =====================multi GPU====================
+
+  Host
+  # stop/remove old shell if needed
+sudo docker rm -f checkfreq-dev 2>/dev/null || true
+
+# launch with four GPUs
+sudo docker run -it --gpus '"device=0,1,2,3"' --ipc=host --shm-size 32g \
+  -v /home/yi/checkfreq_env:/work \
+  --workdir /work \
+  --name checkfreq-dev \
+  pytorch/pytorch:2.3.1-cuda11.8-cudnn8-runtime bash
+
+
+  Inside docker
+
+  nvidia-smi
+python - <<'PY'
+import torch; print("device_count:", torch.cuda.device_count())
+PY
+
+export HF_HOME=/work/hf_cache
+export TOKENIZERS_PARALLELISM=false
+export PYTHONPATH=/work/LLM-Checkpoints:/work/CheckFreq/src:$PYTHONPATH
+export CF_USE_THREAD=1
+export NCCL_DEBUG=WARN
+export NCCL_IB_DISABLE=1
+
+export CUDA_VISIBLE_DEVICES=0,1,2,3
+mkdir -p /work/chk_bloom_multi
+
+
+# inside the container
+python -m pip install -U pip wheel setuptools
+
+# HF + friends (works with torch 2.3.1 / cu118)
+pip install --no-cache-dir "transformers<4.46" "datasets<3" "accelerate>=0.30,<0.33" sentencepiece
+
+# sanity
+python - <<'PY'
+import torch, transformers, datasets
+print("torch:", torch.__version__)
+print("transformers:", transformers.__version__)
+print("datasets:", datasets.__version__)
+PY
+
+
+
+
+manual
+export HF_HOME=/work/hf_cache
+export TOKENIZERS_PARALLELISM=false
+export PYTHONPATH=/work/LLM-Checkpoints:/work/CheckFreq/src:$PYTHONPATH
+export CF_USE_THREAD=1
+export NCCL_DEBUG=WARN
+export NCCL_IB_DISABLE=1
+export CUDA_VISIBLE_DEVICES=0,1,2,3
+
+mkdir -p /work/chk_bloom_multi
+
+torchrun --nproc_per_node=4 \
+  /work/LLM-Checkpoints/models/nlp/bloom_cf.py \
+  --model bigscience/bloom-560m \
+  --train-file /work/wt2_small.txt \
+  --seq-len 128 \
+  --batch-size 2 \
+  --grad-accum-steps 4 \
+  --epochs 1 \
+  --workers 2 \
+  --lr 2e-5 \
+  --chk-prefix /work/chk_bloom_multi \
+  --manual-freq 200 \
+  --arch-name bloom560m | tee -a /work/chk_bloom_multi/run.log
+
+
+  auto (1gpu)
+
+  export CUDA_VISIBLE_DEVICES=0
+torchrun --nproc_per_node=1 \
+  /work/LLM-Checkpoints/models/nlp/bloom_cf.py \
+  --model bigscience/bloom-560m \
+  --train-file /work/wt2_small.txt \
+  --seq-len 128 \
+  --batch-size 2 \
+  --grad-accum-steps 8 \
+  --epochs 1 \
+  --workers 2 \
+  --lr 2e-5 \
+  --chk-prefix /work/chk_bloom_auto_single \
+  --manual-freq 0 \
+  --arch-name bloom560m
+
+
+  auto (4gpu)
+
+  # env (adjust if you haven't set these already)
+export HF_HOME=/work/hf_cache
+export TOKENIZERS_PARALLELISM=false
+export PYTHONPATH=/work/LLM-Checkpoints:/work/CheckFreq/src:$PYTHONPATH
+export CF_USE_THREAD=1
+export NCCL_DEBUG=WARN
+export NCCL_IB_DISABLE=1
+export CUDA_VISIBLE_DEVICES=0,1,2,3
+export MASTER_ADDR=127.0.0.1
+export MASTER_PORT=29500
+
+# seed AUTO cache (one-time; safe to repeat)
+python - <<'PY'
+import json, pathlib
+for name in [".cache_bloom560m_1", ".cache_bloom560m_4"]:
+    cfg = {"avg_iter_dur": 0.07, "chk_freq": 120, "self._chk_fn": "cpu", "self._use_thread": True}
+    pathlib.Path("/work/LLM-Checkpoints/"+name).write_text(json.dumps(cfg))
+    print("Seeded", name, "->", cfg)
+PY
+
+# run BLOOM with CheckFreq (AUTO => --manual-freq 0)
+mkdir -p /work/chk_bloom_multi
+torchrun --standalone --nnodes=1 --nproc_per_node=4 \
+  /work/LLM-Checkpoints/models/nlp/bloom_cf.py \
+  --model bigscience/bloom-560m \
+  --train-file /work/wt2_small.txt \
+  --seq-len 128 \
+  --batch-size 2 \
+  --grad-accum-steps 4 \
+  --epochs 1 \
+  --workers 2 \
+  --lr 2e-5 \
+  --chk-prefix /work/chk_bloom_multi \
+  --manual-freq 0 \
+  --arch-name bloom560m | tee -a /work/chk_bloom_multi/run.log
