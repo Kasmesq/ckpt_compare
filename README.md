@@ -210,7 +210,7 @@ export MASTER_ADDR=127.0.0.1
 export MASTER_PORT=29500
 mkdir -p /work/chk_bloom_multi
 ```
-# 4) 4-GPU AUTO run
+# 4) 4-GPU AUTO run => batch size 8
 ```bash
 torchrun --standalone --nnodes=1 --nproc_per_node=4 \
   /work/LLM-Checkpoints/models/nlp/bloom_cf.py \
