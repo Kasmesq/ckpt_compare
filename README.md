@@ -316,7 +316,7 @@ torchrun --standalone --nnodes=1 --nproc_per_node=4 "$SCRIPT" \
 compare
 
 ```bash
-root@24c920a61a36:/work# python - <<'PY'
+python - <<'PY'
 import os, torch
 A="/work/chk_run_seed1337/lm_v_23.chk"
 B="/work/chk_run_seed2025/lm_v_23.chk"
