@@ -288,3 +288,49 @@ python /work/eval_loss.py   --model bigscience/bloom-560m   \
   --chk-dir  /work/chk_bloom_multi \
   --chk-dir2 /work/chk_bloom_multi_baseline
 ```
+batch 4 + seed
+
+```bash
+SCRIPT=/work/LLM-Checkpoints/models/nlp/bloom_cf.py
+
+# Run A
+torchrun --standalone --nnodes=1 --nproc_per_node=4 "$SCRIPT" \
+  --model bigscience/bloom-560m \
+  --train-file /work/wt2_small.txt \
+  --seq-len 128 --batch-size 4 \
+  --grad-accum-steps 1 --epochs 3 --workers 2 \
+  --lr 5e-5 --chk-prefix /work/chk_run_seed1337 \
+  --manual-freq 0 --arch-name bloom560m \
+  --seed 1337
+
+# Run B
+torchrun --standalone --nnodes=1 --nproc_per_node=4 "$SCRIPT" \
+  --model bigscience/bloom-560m \
+  --train-file /work/wt2_small.txt \
+  --seq-len 128 --batch-size 4 \
+  --grad-accum-steps 1 --epochs 3 --workers 2 \
+  --lr 5e-5 --chk-prefix /work/chk_run_seed2025 \
+  --manual-freq 0 --arch-name bloom560m \
+  --seed 2025
+```
+compare
+
+```bash
+root@24c920a61a36:/work# python - <<'PY'
+import os, torch
+A="/work/chk_run_seed1337/lm_v_23.chk"
+B="/work/chk_run_seed2025/lm_v_23.chk"
+sa=torch.load(A, map_location="cpu")
+sb=torch.load(B, map_location="cpu")
+def flat_params(sd):
+    # sd is a dict like {'model': state_dict, 'optim': ..., ...}
+    m = sd['model']
+    return torch.cat([p.flatten().to(torch.float64) for _,p in m.items() if torch.is_tensor(p)])
+va, vb = flat_params(sa), flat_params(sb)
+diff = torch.norm(va - vb).item()
+rel = diff / (torch.norm(va).item() + 1e-12)
+print(f"||\316\224W||={diff:.6e}  relative={rel:.6e}  (A={os.path.basename(A)}, B={os.pat
+h.basename(B)})")
+PY
+```
+
