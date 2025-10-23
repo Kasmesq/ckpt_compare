@@ -261,6 +261,7 @@ torchrun --standalone --nnodes=1 --nproc_per_node=4 \
 ```
 
 Compare
+
 AUTO
 ```bash
 torchrun --standalone --nnodes=1 --nproc_per_node=4  \
@@ -282,5 +283,8 @@ torchrun --standalone --nnodes=1 --nproc_per_node=4   \
 Compare
 
 ```bash
-python /work/eval_loss.py   --model bigscience/bloom-560m   --file /work/wt2_small.txt   --seq-len 128 --batch-size 4   --chk-dir  /work/chk_bloom_multi   --chk-dir2 /work/chk_bloom_multi_baseline
+python /work/eval_loss.py   --model bigscience/bloom-560m   \
+--file /work/wt2_small.txt   --seq-len 128 --batch-size 4  \
+  --chk-dir  /work/chk_bloom_multi \
+  --chk-dir2 /work/chk_bloom_multi_baseline
 ```
