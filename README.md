@@ -226,3 +226,36 @@ torchrun --standalone --nnodes=1 --nproc_per_node=4 \
   --manual-freq 0 \
   --arch-name bloom560m | tee -a /work/chk_bloom_multi/run.log
   ```
+4 batch
+```bash
+torchrun --standalone --nnodes=1 --nproc_per_node=4 \
+  /work/LLM-Checkpoints/models/nlp/bloom_cf.py \
+  --model bigscience/bloom-560m \
+  --train-file /work/wt2_small.txt \
+  --seq-len 128 \
+  --batch-size 4 \
+  --grad-accum-steps 4 \
+  --epochs 1 \
+  --workers 2 \
+  --lr 2e-5 \
+  --chk-prefix /work/chk_bloom_multi \
+  --manual-freq 0 \
+  --arch-name bloom560m
+```
+resume
+```bash
+torchrun --standalone --nnodes=1 --nproc_per_node=4 \
+  /work/LLM-Checkpoints/models/nlp/bloom_cf.py \
+  --model bigscience/bloom-560m \
+  --train-file /work/wt2_small.txt \
+  --seq-len 128 \
+  --batch-size 4 \
+  --grad-accum-steps 4 \
+  --epochs 1 \
+  --workers 2 \
+  --lr 2e-5 \
+  --chk-prefix /work/chk_bloom_multi \
+  --manual-freq 0 \
+  --arch-name bloom560m \
+  --resume
+```
