@@ -334,3 +334,28 @@ h.basename(B)})")
 PY
 ```
 
+4gpu/none/auto/resume
+
+None ckpt
+```bash
+CF_DISABLE=1 CF_AUTOSTART=0 CF_ENABLE=0 torchrun --s
+tandalone --nnodes=1 --nproc_per_node=4 /work/LLM-Checkpoints/models/nlp/bloom_cf.py   --model bigscience/bloom-560m   --train-file /work/wt2_tiny.txt   --seq-len 128   --batch-size 4   --grad-accum-steps 4   --epochs 1   --workers 2   --lr 2e-5   --chk-prefix /work/chk_bloom_none   --manual-freq 1070   --disable-ckpt   --arch-name bloom560m   2>&1 | tee /work/logs/n
+```
+
+Auto
+```bash
+torchrun --standalone --nnodes=1 --nproc_per_node=4 /work/LLM-Checkpoints/models/nlp/bloom_cf.py --model bigscience/bloom-560m --train-file /work/wt2_tiny.txt --seq-len 128 --batch-size 4 --grad-accum-steps 4 --epochs 1 --workers 2 --lr 2e-5 --chk-prefix /work/chk_bloom_none --manual-freq 0 --arch-name bloom560m 2>&1 | tee /work/logs/none_bloom560m_4gpu.log
+```
+
+
+
+
+
+
+Resume
+
+```bash
+torchrun --standalone --nnodes=1 --nproc_per_node=4   /work/LLM-Checkpoints/models/nlp/bloom_cf.py   --model bigscience/bloom-560m   --train-file /work/wt2_tiny.txt   --seq-len 128   --batch-size 4   --grad-accum-steps 4   --epochs 1   --workers 2   --lr 2e-5   --chk-prefix /work/chk_bloom_auto   --manual-freq 0   --arch-name bloom560m   --resume   2>&1 | tee /work/logs/cf_bloom560m_4gpu_auto_resume
+```
+
+
