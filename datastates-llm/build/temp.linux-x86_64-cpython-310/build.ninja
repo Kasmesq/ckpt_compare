@@ -1,0 +1,33 @@
+ninja_required_version = 1.3
+cxx = /home/yi/miniconda3/envs/datastates-llm/bin/x86_64-conda-linux-gnu-c++
+
+cflags = -march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-strong -fno-plt -O2 -ffunction-sections -pipe -isystem /home/yi/miniconda3/envs/datastates-llm/include -I/home/yi/miniconda3/envs/datastates-llm/targets/x86_64-linux/include -L/home/yi/miniconda3/envs/datastates-llm/targets/x86_64-linux/lib -L/home/yi/miniconda3/envs/datastates-llm/targets/x86_64-linux/lib/stubs -DNDEBUG -D_FORTIFY_SOURCE=2 -O2 -isystem /home/yi/miniconda3/envs/datastates-llm/include -I/home/yi/miniconda3/envs/datastates-llm/targets/x86_64-linux/include -L/home/yi/miniconda3/envs/datastates-llm/targets/x86_64-linux/lib -L/home/yi/miniconda3/envs/datastates-llm/targets/x86_64-linux/lib/stubs -fPIC -I/home/yi/datastates-llm/datastates/ckpt/src/common -I/home/yi/datastates-llm/datastates/ckpt/src/pool -I/home/yi/datastates-llm/datastates/ckpt/src/tiers -I/home/yi/datastates-llm/datastates/ckpt/src -I/home/yi/miniconda3/envs/datastates-llm/lib/python3.10/site-packages/torch/include -I/home/yi/miniconda3/envs/datastates-llm/lib/python3.10/site-packages/torch/include/torch/csrc/api/include -I/home/yi/miniconda3/envs/datastates-llm/include -I/home/yi/miniconda3/envs/datastates-llm/include/python3.10 -c
+post_cflags = -g -fvisibility=hidden -DTORCH_API_INCLUDE_EXTENSION_H -DTORCH_EXTENSION_NAME=src -std=c++17
+cuda_dlink_post_cflags = 
+sycl_dlink_post_cflags = 
+ldflags = 
+
+rule compile
+  command = $cxx -MMD -MF $out.d $cflags -c $in -o $out $post_cflags
+  depfile = $out.d
+  deps = gcc
+
+
+
+
+
+
+
+build /home/yi/datastates-llm/build/temp.linux-x86_64-cpython-310/datastates/ckpt/src/engine.o: compile /home/yi/datastates-llm/datastates/ckpt/src/engine.cpp
+build /home/yi/datastates-llm/build/temp.linux-x86_64-cpython-310/datastates/ckpt/src/pool/mem_pool.o: compile /home/yi/datastates-llm/datastates/ckpt/src/pool/mem_pool.cpp
+build /home/yi/datastates-llm/build/temp.linux-x86_64-cpython-310/datastates/ckpt/src/py_datastates_llm.o: compile /home/yi/datastates-llm/datastates/ckpt/src/py_datastates_llm.cpp
+build /home/yi/datastates-llm/build/temp.linux-x86_64-cpython-310/datastates/ckpt/src/tiers/gpu_tier.o: compile /home/yi/datastates-llm/datastates/ckpt/src/tiers/gpu_tier.cpp
+build /home/yi/datastates-llm/build/temp.linux-x86_64-cpython-310/datastates/ckpt/src/tiers/host_tier.o: compile /home/yi/datastates-llm/datastates/ckpt/src/tiers/host_tier.cpp
+
+
+
+
+
+
+
+
