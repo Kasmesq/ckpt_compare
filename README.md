@@ -22,3 +22,33 @@ python is /home/yi/miniconda3/bin/python
 Python 3.12.9
 ```
 
+Activate env and check Python / Torch
+
+```bash
+conda activate datastates-llm
+
+type -a python
+python --version
+
+python - << 'PY'
+import sys, torch
+print("[DEBUG] sys.executable =", sys.executable)
+print("[DEBUG] Python version:", sys.version.split()[0])
+print("[DEBUG] torch:", torch.__version__, "CUDA:", torch.cuda.is_available())
+PY
+
+```
+
+Build & test datastes-llm
+
+```bash
+cd ~/datastates-llm
+
+# (Re)build C++ extension & Python package
+python -m pip install -v .
+
+# Run DataStates engine tests (no DeepSpeed needed)
+python datastates/tests/test_ckpt_engine.py
+python datastates/tests/test_datastates_llm.py
+
+```
