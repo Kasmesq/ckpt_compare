@@ -14,4 +14,11 @@ hash -r
 # Check that python now comes from conda, not an alias
 type -a python
 python --version
+```
+Should see
+
 ```bash
+python is /home/yi/miniconda3/bin/python
+Python 3.12.9
+```
+
