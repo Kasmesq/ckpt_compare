@@ -238,3 +238,9 @@ Time: 15.05s
 deepspeed --num_gpus 4 train_bloom3b.py --deepspeed_config ds_config_zero2.json --train_file input_data.txt --output_dir ./bloom3b-finetuned/ --resume_from epoch_1
 ```
 
+
+### Script Usage:
+```bash
+./run_all_blooms_ds.sh
+./run_all_blooms_dsllm.sh
+```
