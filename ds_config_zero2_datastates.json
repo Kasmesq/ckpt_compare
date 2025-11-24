@@ -1,0 +1,64 @@
+{
+  "train_micro_batch_size_per_gpu": 1,
+  "gradient_accumulation_steps": 2,
+  "train_batch_size": 8,
+  "steps_per_print": 50,
+
+  "wall_clock_breakdown": true,
+
+  "zero_optimization": {
+    "stage": 2,
+    "offload_optimizer": {
+      "device": "cpu",
+      "pin_memory": true
+    },
+    "reduce_scatter": true,
+    "allgather_partitions": false,
+    "reduce_bucket_size": 2000000,
+    "allgather_bucket_size": 2000000,
+    "contiguous_gradients": true,
+    "round_robin_gradients": true
+  },
+
+  "optimizer": {
+    "type": "AdamW",
+    "params": {
+      "lr": 2e-5,
+      "betas": [0.9, 0.999],
+      "eps": 1e-8,
+      "weight_decay": 0.01
+    }
+  },
+
+  "fp16": {
+    "enabled": true,
+    "loss_scale": 0,
+    "loss_scale_window": 1000,
+    "hysteresis": 2,
+    "min_loss_scale": 1
+  },
+
+  "activation_checkpointing": {
+    "partition_activations": true,
+    "contiguous_memory_optimization": true,
+    "cpu_checkpointing": false,
+    "synchronize_checkpoint_boundary": false
+  },
+
+  "checkpoint": {
+    "tag_validation_enabled": true
+  },
+
+  "datastates_ckpt": {
+    "host_cache_size": 16,
+    "parser_threads": 8,
+    "pool": {
+      "enabled": true,
+      "device": "cpu",
+      "kind": "shm",
+      "path": "/dev/shm/ds_poolfile_${RANK}.bin",
+      "gigabytes": 8,
+      "preallocate": true
+    }
+  }
+}
