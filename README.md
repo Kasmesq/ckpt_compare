@@ -8,6 +8,7 @@ conda activate new_deepspeed0175
 export CUDA_HOME=/usr/local/cuda-11.8
 export PATH=$CUDA_HOME/bin:$PATH
 export LD_LIBRARY_PATH=$CUDA_HOME/lib64:$LD_LIBRARY_PATH
+export PYTORCH_CUDA_ALLOC_CONF="expandable_segments:True"
 ```
 Torch + CUDA
 ```bash
