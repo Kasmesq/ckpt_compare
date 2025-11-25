@@ -1,8 +1,8 @@
 Conda
 ```bash
-conda create -y -n new_deepspeed python=3.10
+conda create -y -n new_deepspeed0175 python=3.10
 
-conda activate new_deepspeed
+conda activate new_deepspeed0175
 
 # CUDA 11.8 경로 (sxm1에서 쓰던 거 그대로)
 export CUDA_HOME=/usr/local/cuda-11.8
