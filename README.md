@@ -50,3 +50,8 @@ from deepspeed.checkpoint.decoupled_checkpoint_engine import DecoupledCheckpoint
 print("[DEBUG] DecoupledCheckpointEngine:", DecoupledCheckpointEngine)
 PY
 ```
+
+
+```bash
+./run_all_blooms_dc.sh
+```
