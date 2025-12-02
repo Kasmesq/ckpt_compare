@@ -124,5 +124,17 @@ torchrun --nproc_per_node=1 \
   | tee -a /work/chk_bloom_auto_small/run.log
 ```
 
+4 GPU:
+export CUDA_VISIBLE_DEVICES=0,1,2,3
+torchrun --nproc_per_node=4 \
+  bloom_cf_bench.py \
+  --model bigscience/bloom-560m \
+  --train-file /work/wt2_small.txt \
+  --seq-len 128 --batch-size 1 --grad-accum-steps 8 \
+  --epochs 1 --workers 2 --lr 2e-5 \
+  --chk-prefix /work/chk_bloom_auto_small \
+  --manual-freq 0 --arch-name bloom560m \
+  | tee -a /work/chk_bloom_auto_small/run.log
+
 
 
