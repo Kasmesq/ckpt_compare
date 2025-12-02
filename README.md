@@ -125,7 +125,15 @@ torchrun --nproc_per_node=1 \
 ```
 
 4 GPU:
+```bash
+cd /work
+
+export HF_HOME=/work/hf_cache
+export TOKENIZERS_PARALLELISM=false
+export PYTHONPATH=/work/CheckFreq:/work/CheckFreq/src:$PYTHONPATH
 export CUDA_VISIBLE_DEVICES=0,1,2,3
+export CF_USE_THREAD=1
+
 rm -f /work/CheckFreq/.cache_bloom3b_1
 mkdir -p /work/chk_bloom_auto_small
 
@@ -134,10 +142,13 @@ torchrun --nproc_per_node=4 \
   --model bigscience/bloom-560m \
   --train-file /work/wt2_small.txt \
   --seq-len 128 --batch-size 1 --grad-accum-steps 8 \
-  --epochs 1 --workers 2 --lr 2e-5 \
+  --epochs 2 \
+  --steps-per-epoch 1070 \
+  --workers 2 --lr 2e-5 \
   --chk-prefix /work/chk_bloom_auto_small \
-  --manual-freq 0 --arch-name bloom560m \
+  --manual-freq 0 \
+  --base-freq 200 \
+  --arch-name bloom560m \
   | tee -a /work/chk_bloom_auto_small/run.log
-
-
+```
 
