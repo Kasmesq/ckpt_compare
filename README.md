@@ -126,6 +126,9 @@ torchrun --nproc_per_node=1 \
 
 4 GPU:
 export CUDA_VISIBLE_DEVICES=0,1,2,3
+rm -f /work/CheckFreq/.cache_bloom3b_1
+mkdir -p /work/chk_bloom_auto_small
+
 torchrun --nproc_per_node=4 \
   bloom_cf_bench.py \
   --model bigscience/bloom-560m \
