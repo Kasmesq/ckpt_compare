@@ -24,18 +24,12 @@ Tested on:
 
 Although the IB link is 100 Gb/s, the NIC is operating at:
 
-
-
 LnkSta: Speed 8GT/s (downgraded), Width x8 (downgraded)
 
-```bash
 This corresponds to PCIe Gen3 x8.
 
-The practical RDMA ceiling in this configuration is:
-```
-~55–60 Gb/s
+The practical RDMA ceiling in this configuration is: ~55–60 Gb/s
 
-```bash
 This is expected and hardware-limited.
 
 ---
@@ -50,12 +44,6 @@ conda activate ds0112_torch21
 export CUDA_HOME=/usr/local/cuda-11.8
 export PATH=$CUDA_HOME/bin:$PATH
 export LD_LIBRARY_PATH=$CUDA_HOME/lib64:$LD_LIBRARY_PATH
-
-```
-
-
-```bash
-
 
 ```
 
