@@ -25,11 +25,10 @@ make -j
 
 # Run
 
+
+
 ## Server
-```bash
-	•	sxm1: 192.168.100.1
-	•	sxm2: 192.168.100.2
-```
+
 ```bash
 ./rdma_server <size_bytes>
 ```
