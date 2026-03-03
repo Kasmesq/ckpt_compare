@@ -1,0 +1,3 @@
+hello checkpoint instrumentation
+this is a tiny smoke test dataset
+we only want to verify csv fields and proc memory reads
