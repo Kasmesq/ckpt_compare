@@ -1,0 +1,11 @@
+cmake_minimum_required(VERSION 3.15)
+project(datastates-llm LANGUAGES CXX CUDA)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+option(BUILD_PYTHON_BINDINGS "Build Python bindings using nanobind" ON)
+
+add_subdirectory(src)
+if(BUILD_PYTHON_BINDINGS)
+    add_subdirectory(python)
+endif()
+add_subdirectory(tests)
