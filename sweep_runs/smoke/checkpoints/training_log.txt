@@ -1,0 +1,48 @@
+[2026-03-03 21:50:55] Training Start. Safe full-file mode. experiment_name=smoke
+[2026-03-03 21:50:59] [INIT] before deepspeed.initialize()
+[2026-03-03 21:51:27] [INIT] before Checkpointing()
+[2026-03-03 21:51:45] [INIT] after Checkpointing()
+[2026-03-03 21:51:45] [INIT] after ensure_ckpt_engine_stats_snapshot()
+[2026-03-03 21:51:45] [INIT] keep_latest_n=0 | keep_recent_n_during_run=20 | delete_all_checkpoints_at_end=1 | retention_cleanup_mode=end | durable_mode=auto -> effective=before_next_ckpt
+[2026-03-03 21:51:45] [INIT] entering training loop
+[2026-03-03 21:51:46] [STEP-END] epoch=1 step=1/20 loss=11.000000 compute=0.583s wall=0.583s over=0.000s bw=0.583s opt=0.000s ckpt_req=0 ckpt_exec=0 cleanup=0.000s cleanup_deleted=0
+[2026-03-03 21:51:46] [STEP-END] epoch=1 step=2/20 loss=11.000000 compute=0.062s wall=0.062s over=0.000s bw=0.062s opt=0.000s ckpt_req=0 ckpt_exec=0 cleanup=0.000s cleanup_deleted=0
+[2026-03-03 21:51:46] [STEP-END] epoch=1 step=3/20 loss=11.000000 compute=0.062s wall=0.062s over=0.000s bw=0.062s opt=0.000s ckpt_req=0 ckpt_exec=0 cleanup=0.000s cleanup_deleted=0
+[2026-03-03 21:51:46] [STEP-END] epoch=1 step=4/20 loss=11.000000 compute=0.061s wall=0.061s over=0.000s bw=0.061s opt=0.000s ckpt_req=0 ckpt_exec=0 cleanup=0.000s cleanup_deleted=0
+[2026-03-03 21:51:46] [STEP-END] epoch=1 step=5/20 loss=11.000000 compute=0.061s wall=0.061s over=0.000s bw=0.061s opt=0.000s ckpt_req=0 ckpt_exec=0 cleanup=0.000s cleanup_deleted=0
+[2026-03-03 21:51:46] [STEP-END] epoch=1 step=6/20 loss=11.000000 compute=0.061s wall=0.061s over=0.000s bw=0.061s opt=0.000s ckpt_req=0 ckpt_exec=0 cleanup=0.000s cleanup_deleted=0
+[2026-03-03 21:51:46] [STEP-END] epoch=1 step=7/20 loss=11.000000 compute=0.062s wall=0.062s over=0.000s bw=0.062s opt=0.000s ckpt_req=0 ckpt_exec=0 cleanup=0.000s cleanup_deleted=0
+[2026-03-03 21:51:46] [STEP-END] epoch=1 step=8/20 loss=11.000000 compute=0.127s wall=0.127s over=0.000s bw=0.062s opt=0.065s ckpt_req=0 ckpt_exec=0 cleanup=0.000s cleanup_deleted=0
+[2026-03-03 21:51:46] [STEP-END] epoch=1 step=9/20 loss=8.625000 compute=0.061s wall=0.061s over=0.000s bw=0.061s opt=0.000s ckpt_req=0 ckpt_exec=0 cleanup=0.000s cleanup_deleted=0
+[2026-03-03 21:51:46] [STEP-CKPT] epoch=1 step=10/20 tag=step_10 begin
+[2026-03-03 21:51:46] [Model-CKPT] tied weights detected; dropping duplicate key 'module.lm_head.weight' and keeping 'module.transformer.word_embeddings.weight' only | numel=256901120 dtype=torch.bfloat16
+[2026-03-03 21:51:50] [CKPT-Stats] epoch=1 step=10/20 tag=step_10 T1(cap=34359738368, used=0, pending=0, q=0, rss=44212690944, vmlck=0) | T2(cap=34359738368, used=0, pending=0, q=0, rss=44212690944, vmlck=0)
+[2026-03-03 21:51:50] [CKPT-Done] epoch=1 step=10/20 tag=step_10 Total=3.85s (HotWait=0.00s, Durable=before_next_ckpt(pending), CleanupSeconds=0.000, CleanupDeleted=0, CleanupMode=end)
+[2026-03-03 21:51:50] [STEP-END] epoch=1 step=10/20 loss=8.625000 compute=0.062s wall=3.943s over=3.881s bw=0.062s opt=0.000s ckpt_req=1 ckpt_exec=1 cleanup=0.000s cleanup_deleted=0
+[2026-03-03 21:51:50] [STEP-END] epoch=1 step=11/20 loss=8.625000 compute=0.075s wall=0.075s over=0.000s bw=0.075s opt=0.000s ckpt_req=0 ckpt_exec=0 cleanup=0.000s cleanup_deleted=0
+[2026-03-03 21:51:50] [STEP-END] epoch=1 step=12/20 loss=8.625000 compute=0.078s wall=0.078s over=0.000s bw=0.078s opt=0.000s ckpt_req=0 ckpt_exec=0 cleanup=0.000s cleanup_deleted=0
+[2026-03-03 21:51:50] [STEP-END] epoch=1 step=13/20 loss=8.625000 compute=0.072s wall=0.072s over=0.000s bw=0.072s opt=0.000s ckpt_req=0 ckpt_exec=0 cleanup=0.000s cleanup_deleted=0
+[2026-03-03 21:51:50] [STEP-END] epoch=1 step=14/20 loss=8.625000 compute=0.068s wall=0.068s over=0.000s bw=0.068s opt=0.000s ckpt_req=0 ckpt_exec=0 cleanup=0.000s cleanup_deleted=0
+[2026-03-03 21:51:51] [STEP-END] epoch=1 step=15/20 loss=8.625000 compute=0.065s wall=0.065s over=0.000s bw=0.065s opt=0.000s ckpt_req=0 ckpt_exec=0 cleanup=0.000s cleanup_deleted=0
+[2026-03-03 21:51:51] [STEP-END] epoch=1 step=16/20 loss=8.625000 compute=0.096s wall=0.096s over=0.000s bw=0.062s opt=0.034s ckpt_req=0 ckpt_exec=0 cleanup=0.000s cleanup_deleted=0
+[2026-03-03 21:51:51] [STEP-END] epoch=1 step=17/20 loss=6.375000 compute=0.069s wall=0.069s over=0.000s bw=0.062s opt=0.007s ckpt_req=0 ckpt_exec=0 cleanup=0.000s cleanup_deleted=0
+[2026-03-03 21:51:51] [STEP-END] epoch=1 step=18/20 loss=6.375000 compute=0.073s wall=0.073s over=0.000s bw=0.061s opt=0.011s ckpt_req=0 ckpt_exec=0 cleanup=0.000s cleanup_deleted=0
+[2026-03-03 21:51:51] [STEP-END] epoch=1 step=19/20 loss=6.375000 compute=0.074s wall=0.074s over=0.000s bw=0.062s opt=0.012s ckpt_req=0 ckpt_exec=0 cleanup=0.000s cleanup_deleted=0
+[2026-03-03 21:51:51] [CKPT-Inflight] waiting previous checkpoint durable before new checkpoint | previous=step_10 next=step_20
+[2026-03-03 21:52:26] [Backpressure] cleared label=before_new_ckpt_after_step_10 waited=0.000s | local_pending_flush=0 (0.00B) | local_q=0
+[2026-03-03 21:52:26] [CKPT-Inflight] previous durable done | previous=step_10 local_wait_durable=35.289s window=35.290s bp_wait=0.000s
+[2026-03-03 21:52:26] [Retention-Run] prune after previous durable | keep_n=20 deleted=0 duration=0.000s
+[2026-03-03 21:52:26] [STEP-CKPT] epoch=1 step=20/20 tag=step_20 begin
+[2026-03-03 21:52:26] [Model-CKPT] tied weights detected; dropping duplicate key 'module.lm_head.weight' and keeping 'module.transformer.word_embeddings.weight' only | numel=256901120 dtype=torch.bfloat16
+[2026-03-03 21:52:31] [CKPT-Stats] epoch=1 step=20/20 tag=step_20 T1(cap=34359738368, used=0, pending=0, q=0, rss=45129564160, vmlck=0) | T2(cap=34359738368, used=0, pending=0, q=0, rss=45129564160, vmlck=0)
+[2026-03-03 21:52:31] [CKPT-Done] epoch=1 step=20/20 tag=step_20 Total=4.39s (HotWait=0.00s, Durable=before_next_ckpt(pending), CleanupSeconds=0.000, CleanupDeleted=0, CleanupMode=end)
+[2026-03-03 21:52:31] [STEP-END] epoch=1 step=20/20 loss=6.375000 compute=0.073s wall=39.751s over=39.678s bw=0.062s opt=0.011s ckpt_req=1 ckpt_exec=1 cleanup=0.000s cleanup_deleted=0
+[2026-03-03 21:52:31] [FINALIZE] draining last pending checkpoint durable | tag=step_20
+[2026-03-03 21:53:26] [Backpressure] cleared label=final_sync_cleanup waited=0.000s | local_pending_flush=0 (0.00B) | local_q=0
+[2026-03-03 21:53:26] [FINALIZE] last durable drain done | tag=step_20 local_wait_durable=55.798s window=55.799s bp_wait=0.000s
+[2026-03-03 21:53:26] [Backpressure] cleared label=final_delete_all_checkpoints waited=0.000s | local_pending_flush=0 (0.00B) | local_q=0
+[2026-03-03 21:53:26] [FINALIZE] delete_all_checkpoints_at_end=1 | bp_wait=0.000s
+[2026-03-03 21:53:26] [Retention-Final] deleting checkpoint step=10 path=/home/ubuntu/ckpt_compare/sweep_runs/smoke/checkpoints/step_10
+[2026-03-03 21:53:27] [Retention-Final] deleting checkpoint step=20 path=/home/ubuntu/ckpt_compare/sweep_runs/smoke/checkpoints/step_20
+[2026-03-03 21:53:27] [FINALIZE] deleted all step checkpoints | deleted=2 duration=0.737s
+[2026-03-03 21:53:27] Training finished.

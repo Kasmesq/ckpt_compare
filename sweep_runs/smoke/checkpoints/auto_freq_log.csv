@@ -1,0 +1,1 @@
+timestamp,experiment_name,event_type,step,is_profiling,profiled_steps,profile_steps,avg_iter_time_seconds,target_overhead,ckpt_duration_seconds,actual_interval,overhead_pct,required_interval,ckpt_equiv_iters,old_freq,new_freq,change_type,reason

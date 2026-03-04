@@ -1,0 +1,6 @@
+# ninja log v7
+16	776	1772573112782860883	/home/ubuntu/ckpt_compare/build/temp.linux-x86_64-cpython-310/datastates/ckpt/src/tiers/gpu_tier.o	e8180d01d26037c4
+16	1044	1772573112781456603	/home/ubuntu/ckpt_compare/build/temp.linux-x86_64-cpython-310/datastates/ckpt/src/pool/mem_pool.o	693768b248770353
+16	1216	1772573112783089968	/home/ubuntu/ckpt_compare/build/temp.linux-x86_64-cpython-310/datastates/ckpt/src/tiers/host_tier.o	91c8f49e8ac4d6af
+15	20752	1772573112780456582	/home/ubuntu/ckpt_compare/build/temp.linux-x86_64-cpython-310/datastates/ckpt/src/engine.o	522f788c1e7fd433
+16	22651	1772573112782639128	/home/ubuntu/ckpt_compare/build/temp.linux-x86_64-cpython-310/datastates/ckpt/src/py_datastates_llm.o	c14181ce79d5c919

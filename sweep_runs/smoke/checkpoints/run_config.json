@@ -1,0 +1,41 @@
+{
+  "experiment_name": "smoke",
+  "args": {
+    "deepspeed_config": "/home/ubuntu/ckpt_compare/ds_config_zero2_bf16_zero2.json",
+    "model_name_or_path": "bigscience/bloom-560m",
+    "train_file": "/home/ubuntu/ckpt_compare/input_data.txt",
+    "output_dir": "/home/ubuntu/ckpt_compare/sweep_runs/smoke",
+    "experiment_name": "smoke",
+    "local_rank": 0,
+    "epochs": 1,
+    "resume_from": null,
+    "required_steps": 20,
+    "block_size": 512,
+    "checkpoint_interval": 10,
+    "allow_nonempty_output_dir": true,
+    "log_disk_usage_each_ckpt": false,
+    "enable_ckpt_backpressure": false,
+    "backpressure_mode": "skip",
+    "backpressure_poll_s": 0.05,
+    "backpressure_timeout_s": 0.0,
+    "enable_auto_freq": false,
+    "initial_freq": 50,
+    "auto_profile_steps": 25,
+    "auto_target_overhead": 0.05,
+    "keep_latest_n": 0,
+    "retention_cleanup_mode": "end",
+    "durable_mode": "auto",
+    "keep_recent_n_during_run": 20,
+    "delete_all_checkpoints_at_end": 1,
+    "retention_final_wait_timeout_s": 120.0
+  },
+  "resolved": {
+    "durable_mode_effective": "before_next_ckpt",
+    "can_wait_durable": true,
+    "world_size": 1,
+    "runtime_config": {
+      "host_cache_size": 32,
+      "parser_threads": 8
+    }
+  }
+}

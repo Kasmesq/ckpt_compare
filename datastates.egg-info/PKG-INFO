@@ -1,0 +1,10 @@
+Metadata-Version: 2.4
+Name: datastates
+Version: 0.0.1
+Summary: Datastates-LLM checkpointing engine
+Author: ANL
+Requires-Dist: pybind11
+Requires-Dist: torch
+Dynamic: author
+Dynamic: requires-dist
+Dynamic: summary

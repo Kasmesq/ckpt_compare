@@ -1,0 +1,28 @@
+ninja_required_version = 1.3
+cxx = c++
+
+cflags = -pthread -B /home/ubuntu/miniconda3/envs/ds0112_torch21/compiler_compat -Wno-unused-result -Wsign-compare -DNDEBUG -fwrapv -O2 -Wall -fPIC -O2 -isystem /home/ubuntu/miniconda3/envs/ds0112_torch21/include -fPIC -O2 -isystem /home/ubuntu/miniconda3/envs/ds0112_torch21/include -fPIC -I/home/ubuntu/ckpt_compare/datastates/ckpt/src/common -I/home/ubuntu/ckpt_compare/datastates/ckpt/src/pool -I/home/ubuntu/ckpt_compare/datastates/ckpt/src/tiers -I/home/ubuntu/ckpt_compare/datastates/ckpt/src -I/home/ubuntu/miniconda3/envs/ds0112_torch21/lib/python3.10/site-packages/torch/include -I/home/ubuntu/miniconda3/envs/ds0112_torch21/lib/python3.10/site-packages/torch/include/torch/csrc/api/include -I/home/ubuntu/miniconda3/envs/ds0112_torch21/lib/python3.10/site-packages/torch/include/TH -I/home/ubuntu/miniconda3/envs/ds0112_torch21/lib/python3.10/site-packages/torch/include/THC -I/include -I/home/ubuntu/miniconda3/envs/ds0112_torch21/include/python3.10 -c
+post_cflags = -g -fvisibility=hidden -DTORCH_API_INCLUDE_EXTENSION_H '-DPYBIND11_COMPILER_TYPE="_gcc"' '-DPYBIND11_STDLIB="_libstdcpp"' '-DPYBIND11_BUILD_ABI="_cxxabi1011"' -DTORCH_EXTENSION_NAME=src -D_GLIBCXX_USE_CXX11_ABI=0 -std=c++17
+cuda_dlink_post_cflags = 
+ldflags = 
+
+rule compile
+  command = $cxx -MMD -MF $out.d $cflags -c $in -o $out $post_cflags
+  depfile = $out.d
+  deps = gcc
+
+
+
+
+
+build /home/ubuntu/ckpt_compare/build/temp.linux-x86_64-cpython-310/datastates/ckpt/src/engine.o: compile /home/ubuntu/ckpt_compare/datastates/ckpt/src/engine.cpp
+build /home/ubuntu/ckpt_compare/build/temp.linux-x86_64-cpython-310/datastates/ckpt/src/pool/mem_pool.o: compile /home/ubuntu/ckpt_compare/datastates/ckpt/src/pool/mem_pool.cpp
+build /home/ubuntu/ckpt_compare/build/temp.linux-x86_64-cpython-310/datastates/ckpt/src/py_datastates_llm.o: compile /home/ubuntu/ckpt_compare/datastates/ckpt/src/py_datastates_llm.cpp
+build /home/ubuntu/ckpt_compare/build/temp.linux-x86_64-cpython-310/datastates/ckpt/src/tiers/gpu_tier.o: compile /home/ubuntu/ckpt_compare/datastates/ckpt/src/tiers/gpu_tier.cpp
+build /home/ubuntu/ckpt_compare/build/temp.linux-x86_64-cpython-310/datastates/ckpt/src/tiers/host_tier.o: compile /home/ubuntu/ckpt_compare/datastates/ckpt/src/tiers/host_tier.cpp
+
+
+
+
+
+
