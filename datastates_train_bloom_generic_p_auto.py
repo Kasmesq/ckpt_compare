@@ -1211,7 +1211,7 @@ def main():
     ds_engine, optimizer, _, _ = deepspeed.initialize(
         model=model,
         model_parameters=model.parameters(),
-        config=ds_config,
+        config={k: v for k, v in ds_config.items() if k != 'datastates_ckpt'},
     )
 
     if ds_engine.global_rank == 0:
