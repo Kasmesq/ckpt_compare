@@ -1,0 +1,476 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# ============================================================
+# AWS A100 / Ubuntu 24.04 / DataStates-LLM reproducible runner
+# ------------------------------------------------------------
+# 목적:
+#  1) Python 3.10 venv 준비
+#  2) torch 2.1.0 + cu118 / deepspeed 0.11.2 환경 맞추기
+#  3) numpy / setuptools 호환성 문제 방지
+#  4) CUDA 11.8 toolkit 경로 설정
+#  5) datastates editable install
+#  6) smoke test (1 GPU)
+#  7) 실패 시 rank log / launcher log / output dir 자동 확인
+#
+# 주의:
+#  - 이 스크립트는 "환경 + 실행"을 한 번에 재현하기 위한 문서형 스크립트다.
+#  - 이미 일부가 설치되어 있어도 재실행 가능하도록 최대한 idempotent 하게 작성했다.
+#  - root 권한이 필요한 apt / CUDA 설치 부분이 있다.
+# ============================================================
+
+
+# ============================================================
+# [0] 사용자 설정: 현재 AWS 머신 경로에 맞게 수정
+# ============================================================
+PROJECT_ROOT="${PROJECT_ROOT:-/home/ubuntu}"
+REPO_ROOT="${REPO_ROOT:-/home/ubuntu/datastate-llm}"
+WORK_ROOT="${WORK_ROOT:-/home/ubuntu/dsllm_results_new_p}"
+
+SCRIPT_PATH="${SCRIPT_PATH:-${WORK_ROOT}/datastates_train_bloom_generic_p_auto.py}"
+DS_CONFIG="${DS_CONFIG:-${WORK_ROOT}/ds_config_zero2_local_standard.json}"
+TRAIN_FILE="${TRAIN_FILE:-${WORK_ROOT}/input.txt}"
+
+# 가상환경 경로
+VENV_DIR="${VENV_DIR:-/home/ubuntu/ckpt-env310}"
+
+# CUDA toolkit 설치 경로
+CUDA_ROOT="${CUDA_ROOT:-/usr/local/cuda-11.8}"
+
+# 실행 파라미터
+NUM_GPUS="${NUM_GPUS:-1}"              # smoke: 1, 본실험: 4 또는 8
+MODEL_NAME="${MODEL_NAME:-bigscience/bloom-560m}"
+REQUIRED_STEPS="${REQUIRED_STEPS:-30}" # smoke: 30, 본실험: 100/1000 등
+EPOCHS="${EPOCHS:-1}"
+BLOCK_SIZE="${BLOCK_SIZE:-64}"
+
+# output
+OUTDIR="${OUTDIR:-${WORK_ROOT}/smoke_test}"
+RANKDIR="${RANKDIR:-${WORK_ROOT}/smoke_rank_logs}"
+LAUNCHER_LOG="${LAUNCHER_LOG:-${WORK_ROOT}/smoke_launcher.log}"
+
+# checkpoint runtime options
+KEEP_LATEST_N="${KEEP_LATEST_N:-0}"
+RETENTION_CLEANUP_MODE="${RETENTION_CLEANUP_MODE:-none}"
+DURABLE_MODE="${DURABLE_MODE:-auto}"
+CHECKPOINT_INTERVAL="${CHECKPOINT_INTERVAL:-1000}"   # smoke에서는 사실상 no-ckpt 비슷하게 동작
+ENABLE_CKPT_BACKPRESSURE="${ENABLE_CKPT_BACKPRESSURE:-1}"
+BACKPRESSURE_MODE="${BACKPRESSURE_MODE:-wait}"
+LOG_DISK_USAGE_EACH_CKPT="${LOG_DISK_USAGE_EACH_CKPT:-1}"
+
+# auto mode를 쓰고 싶으면 1로 바꾸고 아래 값 사용
+ENABLE_AUTO_FREQ="${ENABLE_AUTO_FREQ:-0}"
+AUTO_INITIAL_FREQ="${AUTO_INITIAL_FREQ:-50}"
+AUTO_PROFILE_STEPS="${AUTO_PROFILE_STEPS:-25}"
+AUTO_TARGET_OVERHEAD="${AUTO_TARGET_OVERHEAD:-0.05}"
+
+# datastates flush thread
+DATASTATES_FLUSH_THREADS="${DATASTATES_FLUSH_THREADS:-4}"
+
+# 설치 스위치
+RUN_SYSTEM_SETUP="${RUN_SYSTEM_SETUP:-0}"      # 1이면 apt / python3.10 / gcc-11 등 설치
+RUN_CUDA_INSTALL="${RUN_CUDA_INSTALL:-0}"      # 1이면 CUDA 11.8 local runfile 설치 시도
+RUN_PYTHON_SETUP="${RUN_PYTHON_SETUP:-1}"      # 1이면 venv + pip install 수행
+RUN_DATASTATES_INSTALL="${RUN_DATASTATES_INSTALL:-1}"  # 1이면 pip install -e . --no-build-isolation
+RUN_SMOKE_TEST="${RUN_SMOKE_TEST:-1}"          # 1이면 실행까지 수행
+
+# CUDA local installer 파일명
+CUDA_RUNFILE="${CUDA_RUNFILE:-/home/ubuntu/cuda_11.8.0_520.61.05_linux.run}"
+
+# huggingface 다운로드 캐시
+export HF_HOME="${HF_HOME:-/home/ubuntu/.cache/huggingface}"
+
+# ============================================================
+# [1] 공통 유틸
+# ============================================================
+log() {
+  echo "[INFO] $*" | tee -a "${LAUNCHER_LOG:-/tmp/dsllm_setup.log}"
+}
+
+warn() {
+  echo "[WARN] $*" | tee -a "${LAUNCHER_LOG:-/tmp/dsllm_setup.log}"
+}
+
+err() {
+  echo "[ERROR] $*" | tee -a "${LAUNCHER_LOG:-/tmp/dsllm_setup.log}" >&2
+}
+
+show_cmd() {
+  printf '%q ' "$@"
+  echo
+}
+
+require_file() {
+  local p="$1"
+  if [[ ! -f "$p" ]]; then
+    err "Required file not found: $p"
+    exit 1
+  fi
+}
+
+require_dir() {
+  local p="$1"
+  if [[ ! -d "$p" ]]; then
+    err "Required directory not found: $p"
+    exit 1
+  fi
+}
+
+# 실패 시 마지막 로그를 보여주도록 trap 설정
+on_error() {
+  local rc=$?
+  echo
+  echo "============================================================"
+  echo "[FAIL] Script failed with exit code ${rc}"
+  echo "============================================================"
+
+  if [[ -f "${LAUNCHER_LOG}" ]]; then
+    echo
+    echo "[TAIL] launcher log"
+    tail -n 120 "${LAUNCHER_LOG}" || true
+  fi
+
+  if [[ -d "${RANKDIR}" ]]; then
+    echo
+    echo "[TREE] rank log dir"
+    find "${RANKDIR}" -maxdepth 3 -type f | sort || true
+
+    echo
+    echo "[TAIL] rank logs"
+    while IFS= read -r f; do
+      echo "---------------- ${f} ----------------"
+      tail -n 120 "${f}" || true
+    done < <(find "${RANKDIR}" -maxdepth 3 -type f | sort)
+  fi
+
+  if [[ -d "${OUTDIR}" ]]; then
+    echo
+    echo "[TREE] output dir"
+    find "${OUTDIR}" -maxdepth 3 | sort | head -200 || true
+  fi
+
+  exit "${rc}"
+}
+trap on_error ERR
+
+
+# ============================================================
+# [2] 사전 확인
+# ============================================================
+mkdir -p "$(dirname "${LAUNCHER_LOG}")"
+: > "${LAUNCHER_LOG}"
+
+log "PROJECT_ROOT=${PROJECT_ROOT}"
+log "REPO_ROOT=${REPO_ROOT}"
+log "WORK_ROOT=${WORK_ROOT}"
+log "SCRIPT_PATH=${SCRIPT_PATH}"
+log "DS_CONFIG=${DS_CONFIG}"
+log "TRAIN_FILE=${TRAIN_FILE}"
+log "VENV_DIR=${VENV_DIR}"
+log "CUDA_ROOT=${CUDA_ROOT}"
+log "NUM_GPUS=${NUM_GPUS}"
+log "MODEL_NAME=${MODEL_NAME}"
+log "REQUIRED_STEPS=${REQUIRED_STEPS}"
+log "OUTDIR=${OUTDIR}"
+log "RANKDIR=${RANKDIR}"
+log "ENABLE_AUTO_FREQ=${ENABLE_AUTO_FREQ}"
+log "DATASTATES_FLUSH_THREADS=${DATASTATES_FLUSH_THREADS}"
+
+require_dir "${REPO_ROOT}"
+require_file "${SCRIPT_PATH}"
+require_file "${DS_CONFIG}"
+require_file "${TRAIN_FILE}"
+
+
+# ============================================================
+# [3] 시스템 패키지 준비 (선택)
+# ------------------------------------------------------------
+# Ubuntu 24.04 에서 Python 3.10 / gcc-11 / libaio / numactl 필요.
+# 이미 설치되어 있으면 다시 설치해도 큰 문제는 없다.
+# ============================================================
+if [[ "${RUN_SYSTEM_SETUP}" == "1" ]]; then
+  log "Running system setup"
+
+  sudo apt-get update
+  sudo apt-get install -y \
+    software-properties-common \
+    wget \
+    curl \
+    git \
+    build-essential \
+    gcc-11 \
+    g++-11 \
+    libaio-dev \
+    numactl \
+    python3-venv \
+    python-is-python3
+
+  # Ubuntu 24.04 기본 python이 3.12라서 torch 2.1.0+cu118 wheel 안 맞을 수 있다.
+  # 그래서 python3.10을 추가 설치한다.
+  sudo add-apt-repository -y ppa:deadsnakes/ppa
+  sudo apt-get update
+  sudo apt-get install -y python3.10 python3.10-venv python3.10-dev python3.10-distutils
+fi
+
+
+# ============================================================
+# [4] CUDA 11.8 toolkit 설치 (선택)
+# ------------------------------------------------------------
+# driver는 이미 머신에 있는 경우가 많다. 여기서는 toolkit만 설치한다.
+# apt 방식은 Ubuntu 24.04에서 종종 libtinfo5 / nsight dependency로 깨진다.
+# 그래서 runfile 방식으로 toolkit only 설치한 흐름을 문서화한다.
+# ============================================================
+if [[ "${RUN_CUDA_INSTALL}" == "1" ]]; then
+  log "Running CUDA 11.8 toolkit install"
+
+  if [[ ! -f "${CUDA_RUNFILE}" ]]; then
+    log "Downloading CUDA runfile to ${CUDA_RUNFILE}"
+    wget -O "${CUDA_RUNFILE}" \
+      "https://developer.download.nvidia.com/compute/cuda/11.8.0/local_installers/cuda_11.8.0_520.61.05_linux.run"
+    chmod +x "${CUDA_RUNFILE}"
+  fi
+
+  # toolkit only 설치
+  sudo sh "${CUDA_RUNFILE}" --silent --toolkit --toolkitpath="${CUDA_ROOT}" --override
+
+  # /usr/local/cuda 심볼릭 링크 생성
+  sudo ln -sfn "${CUDA_ROOT}" /usr/local/cuda
+fi
+
+
+# ============================================================
+# [5] shell / CUDA 환경 변수
+# ============================================================
+export CUDA_HOME="${CUDA_ROOT}"
+export PATH="${CUDA_HOME}/bin:${PATH}"
+export LD_LIBRARY_PATH="${CUDA_HOME}/lib64:${LD_LIBRARY_PATH:-}"
+export CC=/usr/bin/gcc-11
+export CXX=/usr/bin/g++-11
+export TORCH_CUDA_ARCH_LIST="8.0"
+
+# A100 8장 머신에서 필요한 일반 환경
+export PYTHONPATH=
+export TOKENIZERS_PARALLELISM=false
+export NCCL_DEBUG=INFO
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+export DATASTATES_FLUSH_THREADS="${DATASTATES_FLUSH_THREADS}"
+
+# CUDA_VISIBLE_DEVICES는 deepspeed --num_gpus 와 같이 쓰면 무시된다고 경고가 뜬다.
+# 그래서 굳이 강제하지 않는다.
+# export CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7
+
+log "which nvcc: $(command -v nvcc || true)"
+if command -v nvcc >/dev/null 2>&1; then
+  nvcc --version | sed -n '1,4p' | tee -a "${LAUNCHER_LOG}"
+else
+  warn "nvcc not found. If datastates C++/CUDA extension must be built, this will fail."
+fi
+
+
+# ============================================================
+# [6] Python 3.10 venv + package install
+# ------------------------------------------------------------
+# 핵심 포인트:
+#  - torch 2.1.0+cu118 는 cp310 wheel 사용
+#  - numpy는 2.x 쓰면 deepspeed 0.11.2와 충돌 가능 -> 1.26.4로 고정
+#  - setuptools는 pkg_resources 문제 때문에 <81 권장
+# ============================================================
+if [[ "${RUN_PYTHON_SETUP}" == "1" ]]; then
+  log "Running python venv setup"
+
+  if [[ ! -d "${VENV_DIR}" ]]; then
+    python3.10 -m venv "${VENV_DIR}"
+  fi
+
+  # shellcheck disable=SC1090
+  source "${VENV_DIR}/bin/activate"
+
+  which python | tee -a "${LAUNCHER_LOG}"
+  python --version | tee -a "${LAUNCHER_LOG}"
+
+  pip install --upgrade pip wheel
+  pip install "setuptools<81"
+
+  # torch/cu118
+  pip install \
+    torch==2.1.0+cu118 \
+    torchvision==0.16.0+cu118 \
+    torchaudio==2.1.0+cu118 \
+    --index-url https://download.pytorch.org/whl/cu118
+
+  # numpy downgrade is critical for this stack
+  pip uninstall -y numpy || true
+  pip install numpy==1.26.4
+
+  pip install \
+    deepspeed==0.11.2 \
+    transformers==4.36.2 \
+    accelerate==1.10.1 \
+    triton==2.1.0 \
+    sentencepiece \
+    pybind11
+
+  python - <<'PY'
+import sys
+import numpy
+import torch
+print("python:", sys.version)
+print("numpy:", numpy.__version__)
+print("torch:", torch.__version__)
+print("torch cuda:", torch.version.cuda)
+print("cuda available:", torch.cuda.is_available())
+print("num gpus:", torch.cuda.device_count())
+for i in range(torch.cuda.device_count()):
+    print(i, torch.cuda.get_device_name(i))
+try:
+    import deepspeed
+    print("deepspeed:", deepspeed.__version__)
+except Exception as e:
+    print("deepspeed import failed:", repr(e))
+PY
+fi
+
+
+# ============================================================
+# [7] datastates editable install
+# ------------------------------------------------------------
+# setup.py develop 는 PEP517 editable 경로에서 torch import 문제로 꼬일 수 있었다.
+# 그래서 pip install -e . --no-build-isolation 이 더 안정적이었다.
+# ============================================================
+if [[ "${RUN_DATASTATES_INSTALL}" == "1" ]]; then
+  log "Installing datastates editable package"
+
+  # shellcheck disable=SC1090
+  source "${VENV_DIR}/bin/activate"
+
+  cd "${REPO_ROOT}"
+  pip install -e . --no-build-isolation
+
+  python - <<'PY'
+import datastates
+import torch
+from torch.utils.cpp_extension import CUDA_HOME
+print("datastates import ok")
+print("torch:", torch.__version__)
+print("CUDA_HOME:", CUDA_HOME)
+PY
+fi
+
+
+# ============================================================
+# [8] smoke test 실행
+# ------------------------------------------------------------
+# 지금까지 확인된 포인트:
+#  - 네 training script는 --deepspeed 플래그를 직접 요구하지 않는 것으로 보였다.
+#  - launcher는 deepspeed CLI로 감싸고, script에는 --deepspeed_config만 넘긴다.
+#  - 긴 명령은 bash array로 구성해야 공백/escape 실수를 줄일 수 있다.
+# ============================================================
+if [[ "${RUN_SMOKE_TEST}" == "1" ]]; then
+  log "Running smoke test"
+
+  # shellcheck disable=SC1090
+  source "${VENV_DIR}/bin/activate"
+
+  mkdir -p "${OUTDIR}" "${RANKDIR}"
+
+  echo "[CHECK] files" | tee -a "${LAUNCHER_LOG}"
+  ls -l "${SCRIPT_PATH}" | tee -a "${LAUNCHER_LOG}"
+  ls -l "${DS_CONFIG}" | tee -a "${LAUNCHER_LOG}"
+  ls -l "${TRAIN_FILE}" | tee -a "${LAUNCHER_LOG}"
+
+  echo "[CHECK] env" | tee -a "${LAUNCHER_LOG}"
+  which python | tee -a "${LAUNCHER_LOG}"
+  python --version | tee -a "${LAUNCHER_LOG}"
+  which deepspeed | tee -a "${LAUNCHER_LOG}"
+  which nvcc | tee -a "${LAUNCHER_LOG}" || true
+  nvcc --version | sed -n '1,4p' | tee -a "${LAUNCHER_LOG}" || true
+
+  # deepspeed command array
+  cmd=(
+    deepspeed
+    --num_gpus "${NUM_GPUS}"
+    --enable_each_rank_log "${RANKDIR}"
+    "${SCRIPT_PATH}"
+    --deepspeed_config "${DS_CONFIG}"
+    --model_name_or_path "${MODEL_NAME}"
+    --train_file "${TRAIN_FILE}"
+    --output_dir "${OUTDIR}"
+    --experiment_name "smoke_${MODEL_NAME##*/}"
+    --epochs "${EPOCHS}"
+    --required_steps "${REQUIRED_STEPS}"
+    --block_size "${BLOCK_SIZE}"
+    --keep_latest_n "${KEEP_LATEST_N}"
+    --retention_cleanup_mode "${RETENTION_CLEANUP_MODE}"
+    --durable_mode "${DURABLE_MODE}"
+  )
+
+  # auto / fixed checkpoint mode 분기
+  if [[ "${ENABLE_AUTO_FREQ}" == "1" ]]; then
+    cmd+=(
+      --enable_auto_freq
+      --initial_freq "${AUTO_INITIAL_FREQ}"
+      --auto_profile_steps "${AUTO_PROFILE_STEPS}"
+      --auto_target_overhead "${AUTO_TARGET_OVERHEAD}"
+    )
+  else
+    cmd+=(--checkpoint_interval "${CHECKPOINT_INTERVAL}")
+  fi
+
+  # optional flags
+  if [[ "${ENABLE_CKPT_BACKPRESSURE}" == "1" ]]; then
+    cmd+=(--enable_ckpt_backpressure --backpressure_mode "${BACKPRESSURE_MODE}")
+  fi
+
+  if [[ "${LOG_DISK_USAGE_EACH_CKPT}" == "1" ]]; then
+    cmd+=(--log_disk_usage_each_ckpt)
+  fi
+
+  {
+    echo "[CMD-BEGIN]"
+    show_cmd "${cmd[@]}"
+    echo "[CMD-END]"
+  } | tee -a "${LAUNCHER_LOG}"
+
+  "${cmd[@]}" 2>&1 | tee -a "${LAUNCHER_LOG}"
+
+  # PIPESTATUS[0]는 pipefail 환경에서는 위 명령 실패 시 trap이 먼저 잡는다.
+  # 여기까지 왔으면 성공한 것.
+  echo
+  echo "============================================================"
+  echo "[SUCCESS] Smoke run finished"
+  echo "============================================================"
+
+  echo
+  echo "[TREE] output dir"
+  find "${OUTDIR}" -maxdepth 3 | sort | head -200
+
+  echo
+  echo "[TREE] rank log dir"
+  find "${RANKDIR}" -maxdepth 3 -type f | sort || true
+fi
+
+
+# ============================================================
+# [9] 다음 단계 안내
+# ------------------------------------------------------------
+# smoke test가 성공하면:
+#   NUM_GPUS=4 REQUIRED_STEPS=100 으로 먼저 확장
+#   이후 NUM_GPUS=8 REQUIRED_STEPS=1000 sweep으로 진행
+#
+# 예:
+#   NUM_GPUS=4 REQUIRED_STEPS=100 OUTDIR=/path/test4 RANKDIR=/path/log4 \
+#   bash run_dsllm_aws_a100.sh
+#
+# auto mode 예:
+#   ENABLE_AUTO_FREQ=1 AUTO_INITIAL_FREQ=50 AUTO_PROFILE_STEPS=25 \
+#   AUTO_TARGET_OVERHEAD=0.05 NUM_GPUS=4 REQUIRED_STEPS=100 \
+#   bash run_dsllm_aws_a100.sh
+# ============================================================
+
+echo
+echo "============================================================"
+echo "[DONE] Script completed"
+echo "============================================================"
+echo "LAUNCHER_LOG=${LAUNCHER_LOG}"
+echo "OUTDIR=${OUTDIR}"
+echo "RANKDIR=${RANKDIR}"
