@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
-
+RUN_SYSTEM_SETUP="${RUN_SYSTEM_SETUP:-0}"      # 1이면 apt / python3.10 / gcc-11 등 설치
+RUN_CUDA_INSTALL="${RUN_CUDA_INSTALL:-0}"      # 1이면 CUDA 11.8 local runfile 설치 시도
 # ============================================================
 # AWS A100 / Ubuntu 24.04 / DataStates-LLM reproducible runner
 # ------------------------------------------------------------
